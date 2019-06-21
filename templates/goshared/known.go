@@ -55,11 +55,28 @@ const emailTpl = `
 `
 
 const uuidTpl = `
-	func (m {{ (msgTyp .).Pointer }}) _validateUuid(uuid string) error {
-		if matched := _{{ .File.InputPath.BaseName }}_uuidPattern.MatchString(uuid); !matched {
-			return errors.New("invalid uuid format")
-		}
+	func isNotHexDigit(c rune) bool {
+		return (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F')
+	}
 
-		return nil
+	func (m {{ (msgTyp .).Pointer }}) _validateUuid(uuid string) error {
+		l := len(uuid)
+		switch l {
+		case 32:
+			for i, c := range uuid {
+				if isNotHexDigit(c) {
+					return errors.New("invalid UUID string")
+				}
+			}
+			return
+		case 36:
+			for i, c := range uuid {
+				if isNotHexDigit(c) && ((i == 8 || i == 13 || i == 18 || i == 23) && c != '-') {
+					return errors.New("invalid UUID string")
+				}
+			}
+			return nil
+		}
+		return fmt.Errorf("UUID must be 32 or 36 characters long but got: %d", l)
 	}
 `

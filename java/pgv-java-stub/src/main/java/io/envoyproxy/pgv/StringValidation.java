@@ -78,14 +78,29 @@ public final class StringValidation {
         }
     }
 
-    private static final Pattern emailWithDisplayName = Pattern.compile(".*<(.*)>");
-    public static void email(String field, String value) throws ValidationException {
+    public static void email(final String field, String value) throws ValidationException {
         EmailValidator emailValidator = EmailValidator.getInstance(true, true);
 
-        // extract email address from between angle brackets, if present
-        Matcher matcher = emailWithDisplayName.matcher(value);
-        if (matcher.matches()) {
-            value = matcher.group(1);
+        // email address might be in display form: "John Doe <john.doe@example.com>"
+        if (value.charAt(value.length() - 1) == '>') {
+            final char[] chars = value.toCharArray();
+            final StringBuilder sb = new StringBuilder();
+            boolean insideQuotes = false;
+            loop: for (int i = chars.length - 2; i >= 0; i--) {
+                switch (chars[i]) {
+                    case '<':
+                        if (!insideQuotes) {
+                            break loop;
+                        }
+
+                    case '"':
+                        insideQuotes = true;
+
+                    default:
+                        sb.append(chars[i]);
+                }
+            }
+            value = sb.toString();
         }
 
         if (!emailValidator.isValid(value)) {
@@ -153,12 +168,32 @@ public final class StringValidation {
         }
     }
 
-    private static final Pattern uuidPattern = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
-    public static void uuid(String field, String value) throws ValidationException {
-        Matcher matcher = uuidPattern.matcher(value);
-        if (!matcher.matches()) {
-            throw new ValidationException(field, enquote(value), "should be a valid uuid");
+    public static void uuid(final String field, final String value) throws ValidationException {
+        final char[] chars = value.toCharArray();
+
+        switch (chars.length) {
+            case 32:
+                for (final char c : chars) {
+                    if (isNotHexDigit(c)) {
+                        break;
+                    }
+                }
+                return;
+
+            case 36:
+                for (int i = 0; i < chars.length; i++) {
+                    if (isNotHexDigit(chars[i]) && ((i == 8 || i == 13 || i == 18 || i == 23) && chars[i] != '-')) {
+                        break;
+                    }
+                }
+                return;
         }
+
+        throw new ValidationException(field, enquote(value), "should be a valid uuid");
+    }
+
+    private static boolean isNotHexDigit(final char c) {
+        return (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F');
     }
 
     private static String enquote(String value) {

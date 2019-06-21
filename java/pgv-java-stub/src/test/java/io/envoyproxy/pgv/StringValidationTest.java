@@ -3,6 +3,8 @@ package io.envoyproxy.pgv;
 import com.google.re2j.Pattern;
 import org.junit.Test;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class StringValidationTest {
@@ -212,7 +214,13 @@ public class StringValidationTest {
 
     @Test
     public void uuidWorks() throws ValidationException {
-        // Match
+        // Match Simple
+        StringValidation.uuid("simple1", "00000000000000000000000000000000")
+        StringValidation.uuid("simple2", "0123456789abcdefABCDEF0123456789")
+        StringValidation.uuid("simple3", UUID.randomUUID().toString())
+        StringValidation.uuid("simple4", "ffffffffffffffffffffffffffffffff")
+        StringValidation.uuid("simple5", "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+        // Match RFC
         StringValidation.uuid("x", "00000000-0000-0000-0000-000000000000");
         StringValidation.uuid("x", "b45c0c80-8880-11e9-a5b1-000000000000");
         StringValidation.uuid("x", "B45C0C80-8880-11E9-A5B1-000000000000");
@@ -227,5 +235,7 @@ public class StringValidationTest {
         // No Match
         assertThatThrownBy(() -> StringValidation.uuid("x", "foobar")).isInstanceOf(ValidationException.class);
         assertThatThrownBy(() -> StringValidation.uuid("x", "ffffffff-ffff-ffff-ffff-fffffffffffff")).isInstanceOf(ValidationException.class);
+        // https://bugs.java.com/bugdatabase/view_bug.do?bug_id=8159339
+        assertThatThrownBy(() -> StringValidation.uuid("x", "24d4d8f3b-3b81-44f3-968d-d1c1a48b4ac8")).isInstanceOf(ValidationException.class);
     }
 }
